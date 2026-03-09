@@ -1,0 +1,687 @@
+hill cipjher <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const k00Input = document.getElementById('k00');
+            const k01Input = document.getElementById('k01');
+            const k10Input = document.getElementById('k10');
+            const k11Input = document.getElementById('k11');
+            const messageInput = document.getElementById('message');
+            const encryptBtn = document.getElementById('encrypt');
+            const decryptBtn = document.getElementById('decrypt');
+            const clearBtn = document.getElementById('clear');
+            const resultDiv = document.getElementById('result');
+
+            // Function to convert letter to number (A=0, B=1, ..., Z=25)
+            function letterToNumber(letter) {
+                return letter.toUpperCase().charCodeAt(0) - 65;
+            }
+
+            // Function to convert number to letter (0=A, 1=B, ..., 25=Z)
+            function numberToLetter(number) {
+                return String.fromCharCode((number % 26) + 65);
+            }
+
+            // Function to calculate determinant of 2x2 matrix
+            function determinant(matrix) {
+                return (matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % 26;
+            }
+
+            // Function to calculate modular multiplicative inverse
+            function modInverse(a, m) {
+                a = ((a % m) + m) % m; // Ensure a is positive
+                for (let x = 1; x < m; x++) {
+                    if ((a * x) % m === 1) {
+                        return x;
+                    }
+                }
+                return 1; // Default if no inverse exists
+            }
+
+            // Function to calculate inverse of 2x2 matrix
+            function inverseMatrix(matrix) {
+                const det = determinant(matrix);
+                const detInv = modInverse(det, 26);
+
+                // Adjugate matrix
+                const adj = [
+                    [matrix[1][1], (-matrix[0][1] + 26) % 26],
+                    [(-matrix[1][0] + 26) % 26, matrix[0][0]]
+                ];
+
+                // Multiply adjugate by determinant inverse
+                return [
+                    [(adj[0][0] * detInv) % 26, (adj[0][1] * detInv) % 26],
+                    [(adj[1][0] * detInv) % 26, (adj[1][1] * detInv) % 26]
+                ];
+            }
+
+            // Function to prepare text (remove non-alphabetic characters, convert to uppercase)
+            function prepareText(text) {
+                text = text.toUpperCase().replace(/[^A-Z]/g, '');
+
+                // If the length is odd, add an 'X' at the end
+                if (text.length % 2 !== 0) {
+                    text += 'X';
+                }
+
+                return text;
+            }
+
+            // Function to encrypt using Hill cipher
+            function hillEncrypt(text, keyMatrix) {
+                text = prepareText(text);
+                let result = '';
+
+                for (let i = 0; i < text.length; i += 2) {
+                    const char1 = letterToNumber(text[i]);
+                    const char2 = letterToNumber(text[i + 1]);
+
+                    const newChar1 = (keyMatrix[0][0] * char1 + keyMatrix[0][1] * char2) % 26;
+                    const newChar2 = (keyMatrix[1][0] * char1 + keyMatrix[1][1] * char2) % 26;
+
+                    result += numberToLetter(newChar1) + numberToLetter(newChar2);
+                }
+
+                return result;
+            }
+
+            // Function to decrypt using Hill cipher
+            function hillDecrypt(text, keyMatrix) {
+                text = prepareText(text);
+
+                // Calculate inverse of key matrix
+                const invKeyMatrix = inverseMatrix(keyMatrix);
+
+                let result = '';
+
+                for (let i = 0; i < text.length; i += 2) {
+                    const char1 = letterToNumber(text[i]);
+                    const char2 = letterToNumber(text[i + 1]);
+
+                    let newChar1 = (invKeyMatrix[0][0] * char1 + invKeyMatrix[0][1] * char2) % 26;
+                    let newChar2 = (invKeyMatrix[1][0] * char1 + invKeyMatrix[1][1] * char2) % 26;
+
+                    // Ensure positive values
+                    newChar1 = (newChar1 + 26) % 26;
+                    newChar2 = (newChar2 + 26) % 26;
+
+                    result += numberToLetter(newChar1) + numberToLetter(newChar2);
+                }
+
+                return result;
+            }
+
+            encryptBtn.addEventListener('click', function () {
+                const message = messageInput.value;
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to encrypt.</p>';
+                    return;
+                }
+
+                // Get key matrix values
+                const keyMatrix = [
+                    [parseInt(k00Input.value) % 26, parseInt(k01Input.value) % 26],
+                    [parseInt(k10Input.value) % 26, parseInt(k11Input.value) % 26]
+                ];
+
+                // Check if determinant is coprime with 26
+                const det = determinant(keyMatrix);
+                if (det === 0 || gcd(det, 26) !== 1) {
+                    resultDiv.innerHTML = '<p>Invalid key matrix. The determinant must be coprime with 26.</p>';
+                    return;
+                }
+
+                const encrypted = hillEncrypt(message, keyMatrix);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Encrypted Message:</strong></p>
+                    <p>${encrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            decryptBtn.addEventListener('click', function () {
+                const message = messageInput.value;
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to decrypt.</p>';
+                    return;
+                }
+
+                // Get key matrix values
+                const keyMatrix = [
+                    [parseInt(k00Input.value) % 26, parseInt(k01Input.value) % 26],
+                    [parseInt(k10Input.value) % 26, parseInt(k11Input.value) % 26]
+                ];
+
+                // Check if determinant is coprime with 26
+                const det = determinant(keyMatrix);
+                if (det === 0 || gcd(det, 26) !== 1) {
+                    resultDiv.innerHTML = '<p>Invalid key matrix. The determinant must be coprime with 26.</p>';
+                    return;
+                }
+
+                const decrypted = hillDecrypt(message, keyMatrix);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Decrypted Message:</strong></p>
+                    <p>${decrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            clearBtn.addEventListener('click', function () {
+                messageInput.value = '';
+                k00Input.value = '5';
+                k01Input.value = '8';
+                k10Input.value = '17';
+                k11Input.value = '3';
+                resultDiv.innerHTML = '<p>Result will appear here...</p>';
+            });
+
+            // Function to calculate greatest common divisor (GCD)
+            function gcd(a, b) {
+                if (b === 0) return a;
+                return gcd(b, a % b);
+            }
+        });
+    </script>
+playfair cipher
+<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const keyInput = document.getElementById('key');
+            const messageInput = document.getElementById('message');
+            const generateMatrixBtn = document.getElementById('generate-matrix');
+            const encryptBtn = document.getElementById('encrypt');
+            const decryptBtn = document.getElementById('decrypt');
+            const clearBtn = document.getElementById('clear');
+            const matrixDiv = document.getElementById('matrix');
+            const resultDiv = document.getElementById('result');
+
+            let keyMatrix = [];
+
+            function generateKeyMatrix(key) {
+                // Convert key to uppercase and remove non-alphabetic characters
+                key = key.toUpperCase().replace(/[^A-Z]/g, '');
+
+                // Replace J with I
+                key = key.replace(/J/g, 'I');
+
+                // Create alphabet (without J)
+                const alphabet = 'ABCDEFGHIKLMNOPQRSTUVWXYZ';
+
+                // Create a set to track used characters
+                const usedChars = new Set();
+
+                // Add key characters to the matrix first
+                let matrixChars = [];
+                for (let char of key) {
+                    if (!usedChars.has(char)) {
+                        usedChars.add(char);
+                        matrixChars.push(char);
+                    }
+                }
+
+                // Add remaining alphabet characters
+                for (let char of alphabet) {
+                    if (!usedChars.has(char)) {
+                        usedChars.add(char);
+                        matrixChars.push(char);
+                    }
+                }
+
+                // Create 5x5 matrix
+                keyMatrix = [];
+                for (let i = 0; i < 5; i++) {
+                    keyMatrix.push(matrixChars.slice(i * 5, (i + 1) * 5));
+                }
+
+                return keyMatrix;
+            }
+
+            function displayMatrix(matrix) {
+                matrixDiv.innerHTML = '';
+
+                for (let row of matrix) {
+                    for (let cell of row) {
+                        const cellDiv = document.createElement('div');
+                        cellDiv.className = 'matrix-cell';
+                        cellDiv.textContent = cell;
+                        matrixDiv.appendChild(cellDiv);
+                    }
+                }
+            }
+
+            function findPosition(matrix, char) {
+                for (let i = 0; i < 5; i++) {
+                    for (let j = 0; j < 5; j++) {
+                        if (matrix[i][j] === char) {
+                            return [i, j];
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function prepareText(text) {
+                // Convert to uppercase and remove non-alphabetic characters
+                text = text.toUpperCase().replace(/[^A-Z]/g, '');
+
+                // Replace J with I
+                text = text.replace(/J/g, 'I');
+
+                // Split into digraphs
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += text[i];
+
+                    // If we're at the end of the text or the next character is the same,
+                    // insert an 'X' (unless the current character is also 'X', then use 'Q')
+                    if (i + 1 < text.length) {
+                        if (text[i] === text[i + 1]) {
+                            result += (text[i] === 'X' ? 'Q' : 'X');
+                        }
+                    }
+                }
+
+                // If the length is odd, add an 'X' at the end
+                if (result.length % 2 !== 0) {
+                    result += 'X';
+                }
+
+                return result;
+            }
+
+            function playfairEncrypt(text, matrix) {
+                text = prepareText(text);
+                let result = '';
+
+                for (let i = 0; i < text.length; i += 2) {
+                    const char1 = text[i];
+                    const char2 = text[i + 1];
+
+                    const [row1, col1] = findPosition(matrix, char1);
+                    const [row2, col2] = findPosition(matrix, char2);
+
+                    let newChar1, newChar2;
+
+                    if (row1 === row2) {
+                        // Same row - take characters to the right (with wraparound)
+                        newChar1 = matrix[row1][(col1 + 1) % 5];
+                        newChar2 = matrix[row2][(col2 + 1) % 5];
+                    } else if (col1 === col2) {
+                        // Same column - take characters below (with wraparound)
+                        newChar1 = matrix[(row1 + 1) % 5][col1];
+                        newChar2 = matrix[(row2 + 1) % 5][col2];
+                    } else {
+                        // Rectangle - take characters at the other corners
+                        newChar1 = matrix[row1][col2];
+                        newChar2 = matrix[row2][col1];
+                    }
+
+                    result += newChar1 + newChar2;
+                }
+
+                return result;
+            }
+
+            function playfairDecrypt(text, matrix) {
+                text = text.toUpperCase().replace(/[^A-Z]/g, '');
+                let result = '';
+
+                for (let i = 0; i < text.length; i += 2) {
+                    const char1 = text[i];
+                    const char2 = text[i + 1];
+
+                    const [row1, col1] = findPosition(matrix, char1);
+                    const [row2, col2] = findPosition(matrix, char2);
+
+                    let newChar1, newChar2;
+
+                    if (row1 === row2) {
+                        // Same row - take characters to the left (with wraparound)
+                        newChar1 = matrix[row1][(col1 - 1 + 5) % 5];
+                        newChar2 = matrix[row2][(col2 - 1 + 5) % 5];
+                    } else if (col1 === col2) {
+                        // Same column - take characters above (with wraparound)
+                        newChar1 = matrix[(row1 - 1 + 5) % 5][col1];
+                        newChar2 = matrix[(row2 - 1 + 5) % 5][col2];
+                    } else {
+                        // Rectangle - take characters at the other corners
+                        newChar1 = matrix[row1][col2];
+                        newChar2 = matrix[row2][col1];
+                    }
+
+                    result += newChar1 + newChar2;
+                }
+
+                return result;
+            }
+
+            generateMatrixBtn.addEventListener('click', function () {
+                const key = keyInput.value;
+
+                if (!key) {
+                    resultDiv.innerHTML = '<p>Please enter a key.</p>';
+                    return;
+                }
+
+                const matrix = generateKeyMatrix(key);
+                displayMatrix(matrix);
+
+                resultDiv.innerHTML = '<p>Key matrix generated successfully!</p>';
+
+                // Add animation effect
+                matrixDiv.style.opacity = '0';
+                setTimeout(() => {
+                    matrixDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            encryptBtn.addEventListener('click', function () {
+                const key = keyInput.value;
+                const message = messageInput.value;
+
+                if (!key || !message) {
+                    resultDiv.innerHTML = '<p>Please enter both a key and a message.</p>';
+                    return;
+                }
+
+                if (keyMatrix.length === 0) {
+                    keyMatrix = generateKeyMatrix(key);
+                    displayMatrix(keyMatrix);
+                }
+
+                const encrypted = playfairEncrypt(message, keyMatrix);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Encrypted Message:</strong></p>
+                    <p>${encrypted}</p>
+                    <p><strong>Formatted in pairs:</strong></p>
+                    <p>${encrypted.match(/.{1,2}/g).join(' ')}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            decryptBtn.addEventListener('click', function () {
+                const key = keyInput.value;
+                const message = messageInput.value;
+
+                if (!key || !message) {
+                    resultDiv.innerHTML = '<p>Please enter both a key and a message.</p>';
+                    return;
+                }
+
+                if (keyMatrix.length === 0) {
+                    keyMatrix = generateKeyMatrix(key);
+                    displayMatrix(keyMatrix);
+                }
+
+                const decrypted = playfairDecrypt(message, keyMatrix);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Decrypted Message:</strong></p>
+                    <p>${decrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            clearBtn.addEventListener('click', function () {
+                keyInput.value = '';
+                messageInput.value = '';
+                matrixDiv.innerHTML = '';
+                keyMatrix = [];
+                resultDiv.innerHTML = '<p>Result will appear here...</p>';
+            });
+        });
+    </script>
+
+
+affine cipher
+<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const aInput = document.getElementById('a');
+            const bInput = document.getElementById('b');
+            const messageInput = document.getElementById('message');
+            const encryptBtn = document.getElementById('encrypt');
+            const decryptBtn = document.getElementById('decrypt');
+            const clearBtn = document.getElementById('clear');
+            const resultDiv = document.getElementById('result');
+
+            // Valid 'a' values (coprime with 26)
+            const validA = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25];
+
+            // Function to convert letter to number (A=0, B=1, ..., Z=25)
+            function letterToNumber(letter) {
+                return letter.toUpperCase().charCodeAt(0) - 65;
+            }
+
+            // Function to convert number to letter (0=A, 1=B, ..., 25=Z)
+            function numberToLetter(number) {
+                return String.fromCharCode((number % 26) + 65);
+            }
+
+            // Function to calculate modular multiplicative inverse
+            function modInverse(a, m) {
+                a = ((a % m) + m) % m; // Ensure a is positive
+                for (let x = 1; x < m; x++) {
+                    if ((a * x) % m === 1) {
+                        return x;
+                    }
+                }
+                return 1; // Default if no inverse exists
+            }
+
+            // Function to encrypt using Affine cipher
+            function affineEncrypt(text, a, b) {
+                text = text.toUpperCase().replace(/[^A-Z]/g, '');
+                let result = '';
+
+                for (let i = 0; i < text.length; i++) {
+                    const x = letterToNumber(text[i]);
+                    const encrypted = (a * x + b) % 26;
+                    result += numberToLetter(encrypted);
+                }
+
+                return result;
+            }
+
+            // Function to decrypt using Affine cipher
+            function affineDecrypt(text, a, b) {
+                text = text.toUpperCase().replace(/[^A-Z]/g, '');
+                let result = '';
+
+                // Calculate modular multiplicative inverse of a
+                const aInverse = modInverse(a, 26);
+
+                for (let i = 0; i < text.length; i++) {
+                    const y = letterToNumber(text[i]);
+                    // Apply decryption formula: D(y) = a^-1 * (y - b) mod 26
+                    let decrypted = (aInverse * ((y - b) % 26 + 26)) % 26;
+                    result += numberToLetter(decrypted);
+                }
+
+                return result;
+            }
+
+            encryptBtn.addEventListener('click', function () {
+                const a = parseInt(aInput.value);
+                const b = parseInt(bInput.value);
+                const message = messageInput.value;
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to encrypt.</p>';
+                    return;
+                }
+
+                if (!validA.includes(a)) {
+                    resultDiv.innerHTML = '<p>Invalid value for \'a\'. It must be coprime with 26.</p>';
+                    return;
+                }
+
+                const encrypted = affineEncrypt(message, a, b);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Encrypted Message:</strong></p>
+                    <p>${encrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            decryptBtn.addEventListener('click', function () {
+                const a = parseInt(aInput.value);
+                const b = parseInt(bInput.value);
+                const message = messageInput.value;
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to decrypt.</p>';
+                    return;
+                }
+
+                if (!validA.includes(a)) {
+                    resultDiv.innerHTML = '<p>Invalid value for \'a\'. It must be coprime with 26.</p>';
+                    return;
+                }
+
+                const decrypted = affineDecrypt(message, a, b);
+
+                resultDiv.innerHTML = `
+                    <p><strong>Decrypted Message:</strong></p>
+                    <p>${decrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            clearBtn.addEventListener('click', function () {
+                messageInput.value = '';
+                aInput.value = '5';
+                bInput.value = '8';
+                resultDiv.innerHTML = '<p>Result will appear here...</p>';
+            });
+        });
+    </script>
+ceaser cipher
+<script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const messageInput = document.getElementById('message');
+            const shiftInput = document.getElementById('shift');
+            const encryptBtn = document.getElementById('encrypt');
+            const decryptBtn = document.getElementById('decrypt');
+            const clearBtn = document.getElementById('clear');
+            const resultDiv = document.getElementById('result');
+
+            function caesarCipher(text, shift, encrypt = true) {
+                // If decrypting, use negative shift
+                if (!encrypt) {
+                    shift = (26 - shift) % 26;
+                }
+
+                return text.split('').map(char => {
+                    // Check if character is a letter
+                    if (/[a-zA-Z]/.test(char)) {
+                        // Determine ASCII offset based on case
+                        const offset = char.charCodeAt(0) <= 90 ? 65 : 97;
+                        // Apply shift and wrap around alphabet
+                        return String.fromCharCode((char.charCodeAt(0) - offset + shift) % 26 + offset);
+                    }
+                    // Return non-alphabetic characters unchanged
+                    return char;
+                }).join('');
+            }
+
+            encryptBtn.addEventListener('click', function () {
+                const message = messageInput.value;
+                const shift = parseInt(shiftInput.value);
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to encrypt.</p>';
+                    return;
+                }
+
+                if (isNaN(shift) || shift < 1 || shift > 25) {
+                    resultDiv.innerHTML = '<p>Please enter a valid shift value between 1 and 25.</p>';
+                    return;
+                }
+
+                const encrypted = caesarCipher(message, shift, true);
+                resultDiv.innerHTML = `
+                    <p><strong>Encrypted Message:</strong></p>
+                    <p>${encrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            decryptBtn.addEventListener('click', function () {
+                const message = messageInput.value;
+                const shift = parseInt(shiftInput.value);
+
+                if (!message) {
+                    resultDiv.innerHTML = '<p>Please enter a message to decrypt.</p>';
+                    return;
+                }
+
+                if (isNaN(shift) || shift < 1 || shift > 25) {
+                    resultDiv.innerHTML = '<p>Please enter a valid shift value between 1 and 25.</p>';
+                    return;
+                }
+
+                const decrypted = caesarCipher(message, shift, false);
+                resultDiv.innerHTML = `
+                    <p><strong>Decrypted Message:</strong></p>
+                    <p>${decrypted}</p>
+                `;
+
+                // Add animation effect
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.style.opacity = '1';
+                }, 50);
+            });
+
+            clearBtn.addEventListener('click', function () {
+                messageInput.value = '';
+                shiftInput.value = '3';
+                resultDiv.innerHTML = '<p>Result will appear here...</p>';
+            });
+        });
+    </script>
+</body>
+
+</html>
+
+
