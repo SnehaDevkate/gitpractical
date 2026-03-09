@@ -10,7 +10,7 @@ hill cipjher <script>
             const clearBtn = document.getElementById('clear');
             const resultDiv = document.getElementById('result');
 
-            // Function to convert letter to number (A=0, B=1, ..., Z=25)
+            // Function to convert letter to number (A=0, B=1, ..., Z=25) hey its feature branch
             function letterToNumber(letter) {
                 return letter.toUpperCase().charCodeAt(0) - 65;
             }
